@@ -1,0 +1,40 @@
+# Example Cloudflare Tunnel config for Interview Coach.
+#
+# Where it goes: copy this to ~/.cloudflared/config.yml on the home PC
+#   mkdir -p ~/.cloudflared
+#   cp deploy/cloudflared-config.yml ~/.cloudflared/config.yml
+#
+# Then edit the 3 placeholders below:
+#   - <TUNNEL_ID>     : the ID printed by `cloudflared tunnel create interview-coach`
+#   - USER            : your Linux username (so the path matches your home dir)
+#   - interview.yourdomain.com : the hostname you routed with
+#       `cloudflared tunnel route dns interview-coach interview.yourdomain.com`
+#
+# Prerequisites (run once, in order):
+#   cloudflared tunnel login
+#   cloudflared tunnel create interview-coach
+#   cloudflared tunnel route dns interview-coach interview.yourdomain.com
+#
+# Start it on every boot:
+#   sudo cloudflared service install
+#   sudo systemctl enable --now cloudflared
+#
+# Check it:
+#   cloudflared tunnel list
+#   systemctl status cloudflared
+
+# The tunnel to run. Either the name or the ID works; the name is clearer.
+tunnel: interview-coach
+
+# Credentials file created by `cloudflared tunnel create`.
+# Replace <TUNNEL_ID> and USER. (On a system service install, cloudflared may
+# also read credentials from /etc/cloudflared/ — keep this path if you run it
+# as your user; adjust if you moved the file.)
+credentials-file: /home/USER/.cloudflared/<TUNNEL_ID>.json
+
+# Routing rules, evaluated top to bottom. The first match wins; the final
+# catch-all returns 404 for anything else hitting the tunnel.
+ingress:
+  - hostname: interview.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404

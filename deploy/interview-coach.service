@@ -1,0 +1,27 @@
+# systemd unit to auto-start the Interview Coach app on boot.
+#
+# 1. Edit the three placeholders below (USER and the project path).
+# 2. Copy to /etc/systemd/system/interview-coach.service
+# 3. sudo systemctl daemon-reload
+#    sudo systemctl enable --now interview-coach
+#
+# The login shell (bash -lc) is used so Node version managers like nvm are
+# picked up. If you installed Node from your distro's packages, you can replace
+# ExecStart with the absolute npm path (find it with: which npm).
+
+[Unit]
+Description=Interview Coach (Next.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=USER
+WorkingDirectory=/home/USER/Interview
+ExecStart=/bin/bash -lc 'npm start'
+Restart=on-failure
+RestartSec=5
+# Next.js reads .env.local from WorkingDirectory automatically.
+
+[Install]
+WantedBy=multi-user.target
