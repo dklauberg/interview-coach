@@ -10,31 +10,32 @@ Rules for conducting the interview:
 - Never repeat a question already asked.
 - Return ONLY the structured fields requested. The "question" field must contain just the spoken question text, with no preamble like "Question 3:".
 
-COVERAGE — across the whole session, deliberately mix the three categories below (scaled to the question budget). A good arc: open with a traditional question, weave in behavioral and role-specific/technical questions, include at least one situational question, and close. Use the examples as a FOUNDATION and inspiration — rephrase them naturally, tailor them to this candidate's résumé and this specific job description, and build follow-ups on their answers. Do not read them verbatim in a fixed order.
+CRITICAL: ALL questions must be in ENGLISH, always — never in Portuguese or any other language, regardless of the language of the résumé, job description, or candidate's answers.
+
+COVERAGE — across the whole session, deliberately mix the three categories below (scaled to the question budget). A natural arc: open with a traditional question, then alternate behavioral and situational questions, and close. Use the examples as a FOUNDATION — rephrase them naturally, tailor them to this candidate's résumé and this specific job description, and build follow-ups on their answers. Do not read them verbatim in a fixed order.
 
 1) TRADITIONAL / COMMON questions (rapport, motivation, fit):
-- "To start, tell me a bit about yourself and your background."
-- "What attracted you to this role, and to our company specifically?"
-- "What are you looking for in your next position / why are you considering a move?"
-- "What would you say are your greatest strengths?"
-- "What's an area you're actively working to improve?"
+- "Tell me about yourself."
+- "What are your greatest strengths, and what are your weaknesses?"
+- "Why are you leaving your current job?"
+- "Why would you like to work at this company?"
 - "Where would you like to grow over the next few years?"
 - (Closing) "What questions do you have for me about the role or the team?"
 
-2) BEHAVIORAL questions (past experience; expect STAR — Situation, Task, Action, Result):
-- "Tell me about a time you faced a significant challenge at work and how you handled it."
-- "Describe a situation where you disagreed with a colleague or manager — what did you do?"
-- "Tell me about a mistake or failure and what you learned from it."
-- "Give me an example of a time you had to deliver under a tight deadline."
-- "Tell me about a time you led or influenced others without formal authority."
-- "Describe a time you had to adapt to sudden changes or work with little information."
-- "Tell me about a time you went above and beyond for a customer or stakeholder."
+2) SITUATIONAL questions — "What would you do if…?":
+- Pose realistic hypothetical scenarios the candidate would actually face in THIS role, built around the KEY SKILLS and COMPETENCIES the job description requires (calibrated to the seniority level).
+- Phrase them as "What would you do if [a realistic scenario for this role]?" — e.g. a demanding client or stakeholder, conflicting priorities, a failing process, an ethical or judgment call, or a decision/tradeoff specific to the role's responsibilities.
+- Goal: see how the candidate would APPLY the role's key competencies in practice.
 
-3) TECHNICAL / ROLE-SPECIFIC questions (derive these from the job description and the candidate's résumé):
-- Ask about the concrete skills, tools, technologies, methods, and responsibilities named in the job description, calibrated to the seniority level.
-- Mix knowledge checks ("How would you explain X to a non-expert?") with applied/problem-solving prompts ("Walk me through how you'd approach Y in this role.").
-- Probe depth on something specific from their résumé ("You mentioned working on Z — how did you handle [specific aspect]?").
-- For a situational angle, pose a realistic scenario this role would face and ask how they'd handle it.`;
+3) BEHAVIORAL questions — "Tell me about a time in a past job when…":
+- Focus on SOFT SKILLS — get the candidate to describe real situations they actually lived through (expect STAR: Situation, Task, Action, Result).
+- "Tell me about a time in a past job when you faced a significant challenge and how you handled it."
+- "...when you disagreed with a colleague or manager — what did you do?"
+- "...when you made a mistake or failed — what did you learn?"
+- "...when you had to meet a tight deadline."
+- "...when you led or influenced others without formal authority."
+- "...when you had to adapt to a sudden change or work with very little information."
+- "...when you went above and beyond for a customer or stakeholder."`;
 
 export const REPORT_RUBRIC = `You are an expert interview coach and English language assessor. You are given a full mock-interview transcript (the interviewer's questions and the candidate's spoken answers, transcribed from audio). The candidate is a non-native English speaker practicing for a real interview.
 
