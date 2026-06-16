@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { Recorder, blobToFloat32 } from "@/lib/audio";
 import { transcribe, loadTranscriber } from "@/lib/stt";
-import { speak, stopSpeaking } from "@/lib/tts";
+import { speak, stopSpeaking, preloadTTS } from "@/lib/tts";
 import type { Turn } from "@/lib/types";
 
 type Phase =
@@ -99,14 +99,19 @@ export default function InterviewPage() {
     // warm the TTS voices list
     if (typeof window !== "undefined") window.speechSynthesis?.getVoices();
 
-    // preload Whisper, then ask the first question
-    loadTranscriber((p) => {
-      if (p.status === "progress" && typeof p.progress === "number") {
-        setModelStatus(`Loading speech model… ${Math.round(p.progress)}%`);
-      } else if (p.status === "ready" || p.status === "done") {
-        setModelStatus("");
-      }
-    })
+    // preload the speech (Whisper) AND voice (Kokoro) models in parallel, then
+    // ask the first question — so all the loading happens here, up front, and
+    // the interviewer's first question speaks without a mid-interview delay.
+    Promise.all([
+      loadTranscriber((p) => {
+        if (p.status === "progress" && typeof p.progress === "number") {
+          setModelStatus(`Loading speech + voice models… ${Math.round(p.progress)}%`);
+        } else if (p.status === "ready" || p.status === "done") {
+          setModelStatus("");
+        }
+      }),
+      preloadTTS(),
+    ])
       .then(() => askNext([]))
       .catch((err) => {
         setError(
@@ -208,8 +213,9 @@ export default function InterviewPage() {
           <div className="loader" />
           <p>{modelStatus || "Preparing…"}</p>
           <p className="hint">
-            The first time, Whisper (the local speech recognizer) downloads to your
-            browser. It is cached afterwards.
+            The first time, the speech recognizer (Whisper) and the voice (Kokoro)
+            download to your browser. This can take a minute once; they are cached
+            afterwards, so future sessions start quickly.
           </p>
         </div>
       ) : (

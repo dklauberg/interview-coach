@@ -42,10 +42,12 @@ function getTTS(): Promise<any> {
 }
 
 /** Start downloading the voice model early (call when the interview screen opens). */
-export function preloadTTS() {
-  getTTS().catch(() => {
-    fallbackOnly = true;
-  });
+export function preloadTTS(): Promise<void> {
+  return getTTS()
+    .then(() => undefined)
+    .catch(() => {
+      fallbackOnly = true;
+    });
 }
 
 function fallbackSpeak(text: string): Promise<void> {
