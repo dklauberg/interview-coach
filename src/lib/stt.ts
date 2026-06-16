@@ -1,10 +1,11 @@
 // Local speech-to-text via Whisper running in the browser (transformers.js).
-// The model (~150 MB for whisper-base.en) downloads once on first use and is
+// The model (~80 MB for whisper-base.en) downloads once on first use and is
 // cached by the browser. After that, transcription runs fully on-device — no
 // audio ever leaves the machine, and there is no per-use cost.
 //
-// Prefers the GPU (WebGPU) so transcription is fast and doesn't freeze the UI;
-// falls back to CPU (wasm) on machines without WebGPU.
+// Runs on the CPU (wasm). This is the reliable path: Whisper on WebGPU can hang
+// on some machines, so we keep transcription on wasm even though the voice (TTS)
+// uses WebGPU. Transcription shows a spinner while it runs.
 
 type ProgressCb = (p: { status: string; progress?: number; file?: string }) => void;
 
@@ -16,19 +17,7 @@ export function loadTranscriber(onProgress?: ProgressCb): Promise<unknown> {
   if (!transcriberPromise) {
     transcriberPromise = (async () => {
       const { pipeline } = await import("@huggingface/transformers");
-      const hasGPU = typeof navigator !== "undefined" && "gpu" in navigator;
-      if (hasGPU) {
-        try {
-          return await pipeline("automatic-speech-recognition", MODEL, {
-            device: "webgpu",
-            dtype: "fp32",
-            progress_callback: onProgress as never,
-          });
-        } catch {
-          // GPU not usable — fall back to CPU below
-        }
-      }
-      return await pipeline("automatic-speech-recognition", MODEL, {
+      return pipeline("automatic-speech-recognition", MODEL, {
         progress_callback: onProgress as never,
       });
     })();
