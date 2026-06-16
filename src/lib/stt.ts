@@ -38,5 +38,13 @@ export async function transcribe(
     chunk_length_s: 30,
     stride_length_s: 5,
   });
-  return (result.text || "").trim();
+  return collapseRepeats((result.text || "").trim());
+}
+
+/**
+ * Safety net for Whisper hallucinations: collapse a word repeated 3+ times in a
+ * row (e.g. "da da da da…") down to a single occurrence.
+ */
+function collapseRepeats(text: string): string {
+  return text.replace(/\b(\w+)(\s+\1\b){2,}/gi, "$1").replace(/\s{2,}/g, " ").trim();
 }
