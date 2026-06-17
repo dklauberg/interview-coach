@@ -226,6 +226,14 @@ export default function ProgressPage() {
                           : "No report"}
                       </div>
                     </div>
+                    {s.report && (
+                      <button
+                        className="secondary"
+                        onClick={() => router.push(`/report?id=${s.id}`)}
+                      >
+                        View report
+                      </button>
+                    )}
                   </div>
                 );
               })}

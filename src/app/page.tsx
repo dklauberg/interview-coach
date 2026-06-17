@@ -242,13 +242,23 @@ export default function SetupPage() {
                     : "No report"}
                 </div>
               </div>
-              <button
-                className="ghost"
-                onClick={() => deleteSession(s.id)}
-                title="Delete"
-              >
-                ✕
-              </button>
+              <div className="row" style={{ gap: 6 }}>
+                {s.report && (
+                  <button
+                    className="secondary"
+                    onClick={() => router.push(`/report?id=${s.id}`)}
+                  >
+                    View report
+                  </button>
+                )}
+                <button
+                  className="ghost"
+                  onClick={() => deleteSession(s.id)}
+                  title="Delete"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ))}
         </div>

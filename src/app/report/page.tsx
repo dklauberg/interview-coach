@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { computeDelivery, paceLabel } from "@/lib/metrics";
 import type { CorrectionItem, Report } from "@/lib/types";
@@ -26,14 +26,20 @@ function ScoreCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default function ReportPage() {
+function ReportContent() {
   const router = useRouter();
-  const config = useStore((s) => s.config);
-  const turns = useStore((s) => s.turns);
-  const report = useStore((s) => s.report);
+  const searchParams = useSearchParams();
+  const viewId = searchParams.get("id"); // when set, we're viewing a past saved session
+
+  const activeConfig = useStore((s) => s.config);
+  const activeTurns = useStore((s) => s.turns);
+  const activeReport = useStore((s) => s.report);
+  const sessions = useStore((s) => s.sessions);
   const setReport = useStore((s) => s.setReport);
   const saveCurrentSession = useStore((s) => s.saveCurrentSession);
+  const startSession = useStore((s) => s.startSession);
 
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modelAnswers, setModelAnswers] = useState<Record<number, string> | null>(
@@ -43,21 +49,33 @@ export default function ReportPage() {
   const requested = useRef(false);
   const saved = useRef(false);
 
+  const isSaved = !!viewId;
+  const savedSession = viewId ? sessions.find((s) => s.id === viewId) : undefined;
+
+  // effective data: a past saved session, or the active just-finished one
+  const config = isSaved ? savedSession?.config : activeConfig;
+  const turns = (isSaved ? savedSession?.turns : activeTurns) ?? [];
+  const report = isSaved ? savedSession?.report ?? null : activeReport;
+
   const delivery = useMemo(() => computeDelivery(turns), [turns]);
 
+  useEffect(() => setMounted(true), []);
+
+  // generate the report — only for a freshly finished (active) session
   useEffect(() => {
-    if (!config || turns.length === 0) {
+    if (isSaved) return;
+    if (!activeConfig || activeTurns.length === 0) {
       router.replace("/");
       return;
     }
-    if (report || requested.current) return;
+    if (activeReport || requested.current) return;
     requested.current = true;
     setLoading(true);
 
     fetch("/api/report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config, turns }),
+      body: JSON.stringify({ config: activeConfig, turns: activeTurns }),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -71,12 +89,14 @@ export default function ReportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // persist the active session to history once its report exists
   useEffect(() => {
-    if (report && !saved.current) {
+    if (isSaved) return;
+    if (activeReport && !saved.current) {
       saved.current = true;
       saveCurrentSession();
     }
-  }, [report, saveCurrentSession]);
+  }, [isSaved, activeReport, saveCurrentSession]);
 
   async function loadModelAnswers() {
     if (!config) return;
@@ -102,6 +122,20 @@ export default function ReportPage() {
     }
   }
 
+  if (!mounted) return null;
+
+  // viewing a past session that no longer exists
+  if (isSaved && !savedSession) {
+    return (
+      <div className="container">
+        <div className="card center">
+          <p className="muted">That session was not found.</p>
+          <button onClick={() => router.push("/progress")}>Back to dashboard</button>
+        </div>
+      </div>
+    );
+  }
+
   if (!config) return null;
 
   const correctionsByTurn = (report?.corrections ?? []).reduce(
@@ -118,6 +152,9 @@ export default function ReportPage() {
       <p className="subtitle">
         {config.profile} · {config.level} · {config.length} min ·{" "}
         {turns.length} questions
+        {isSaved && savedSession
+          ? ` · ${new Date(savedSession.createdAt).toLocaleString()}`
+          : ""}
       </p>
 
       {loading && (
@@ -131,15 +168,17 @@ export default function ReportPage() {
       {error && (
         <div className="card">
           <p className="error">{error}</p>
-          <button
-            onClick={() => {
-              requested.current = false;
-              setError("");
-              location.reload();
-            }}
-          >
-            Try again
-          </button>
+          {!isSaved && (
+            <button
+              onClick={() => {
+                requested.current = false;
+                setError("");
+                location.reload();
+              }}
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 
@@ -156,7 +195,6 @@ export default function ReportPage() {
             <p style={{ marginTop: 18 }}>{report.summary}</p>
           </div>
 
-          {/* Delivery metrics — computed locally from the audio + transcript */}
           <div className="card">
             <h2>🗣️ Delivery</h2>
             <div className="scores">
@@ -269,23 +307,35 @@ export default function ReportPage() {
         <button
           className="secondary"
           onClick={() => {
-            useStore.getState().startSession(config);
+            startSession(config);
             router.push("/interview");
           }}
         >
           Practice again (same role)
         </button>
         {report && (
-          <>
-            <button className="secondary" onClick={() => window.print()}>
-              ⬇ Download PDF
-            </button>
-            <button className="secondary" onClick={() => router.push("/progress")}>
-              📈 Progress
-            </button>
-          </>
+          <button className="secondary" onClick={() => window.print()}>
+            ⬇ Download PDF
+          </button>
         )}
+        <button className="secondary" onClick={() => router.push("/progress")}>
+          📈 Progress
+        </button>
       </div>
     </div>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container">
+          <div className="loader" />
+        </div>
+      }
+    >
+      <ReportContent />
+    </Suspense>
   );
 }
