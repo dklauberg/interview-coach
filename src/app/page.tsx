@@ -96,6 +96,15 @@ export default function SetupPage() {
         a full transcript, English corrections, and a scored feedback report.
       </p>
 
+      <div className="row" style={{ marginBottom: 24 }}>
+        <button className="secondary" onClick={() => router.push("/analyze")}>
+          🎧 Analyze an audio recording
+        </button>
+        <button className="secondary" onClick={() => router.push("/progress")}>
+          📈 Progress
+        </button>
+      </div>
+
       <div className="card">
         <label>Who is practicing?</label>
         <p className="hint">Used to track your progress over time.</p>
