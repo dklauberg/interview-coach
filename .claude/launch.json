@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8099", "--directory", "C:/Users/dougl/OneDrive/Documentos/ELIFOOT"],
       "port": 8099
+    },
+    {
+      "name": "youtube-studio",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "C:/Users/dougl/OneDrive/Documentos/youtube-studio"],
+      "port": 3005
     }
   ]
 }
