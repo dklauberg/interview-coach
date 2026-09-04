@@ -352,3 +352,12 @@ a {
     transform: rotate(360deg);
   }
 }
+
+/* Voice controls sit inline under the question — they shouldn't stretch to the
+   full width the way form selects on the setup screen do. */
+.question-box select {
+  width: auto;
+  max-width: 100%;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}

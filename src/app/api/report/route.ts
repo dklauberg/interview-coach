@@ -1,10 +1,4 @@
-import {
-  anthropic,
-  MODELS,
-  buildContext,
-  extractJson,
-  errorResponse,
-} from "@/lib/anthropic";
+import { MODELS, buildContext, generateJson, errorResponse } from "@/lib/anthropic";
 import { REPORT_RUBRIC } from "@/lib/prompts";
 import type { Report, SessionConfig, Turn } from "@/lib/types";
 
@@ -64,14 +58,13 @@ export async function POST(req: Request) {
       )
       .join("\n\n");
 
-    const msg = await anthropic.messages.create({
+    // The report is the one place where quality clearly beats latency: it scores
+    // the session and produces the English corrections the user learns from.
+    const data = await generateJson<Report>({
       model: MODELS.report,
-      max_tokens: 8000,
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "high",
-        format: { type: "json_schema", schema },
-      },
+      maxTokens: 16000,
+      effort: "high",
+      schema,
       system: [
         { type: "text", text: REPORT_RUBRIC },
         {
@@ -80,15 +73,10 @@ export async function POST(req: Request) {
           cache_control: { type: "ephemeral" },
         },
       ],
-      messages: [
-        {
-          role: "user",
-          content: `Here is the full interview transcript. Evaluate it per your instructions.\n\n${transcript}`,
-        },
-      ],
+      userMessage: `Here is the full interview transcript. Evaluate it per your instructions.\n\n${transcript}`,
     });
 
-    return Response.json(extractJson<Report>(msg));
+    return Response.json(data);
   } catch (err) {
     return errorResponse(err);
   }

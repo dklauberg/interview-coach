@@ -1,7 +1,7 @@
-import { anthropic, MODELS, extractJson, errorResponse } from "@/lib/anthropic";
+import { MODELS, generateJson, errorResponse } from "@/lib/anthropic";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const schema = {
   type: "object",
@@ -38,26 +38,21 @@ export async function POST(req: Request) {
       return Response.json({ error: "Empty transcript" }, { status: 400 });
     }
 
-    const msg = await anthropic.messages.create({
+    const data = await generateJson({
       model: MODELS.questions,
-      max_tokens: 4000,
-      thinking: { type: "disabled" },
+      maxTokens: 16000,
+      effort: "medium",
+      schema,
       system: [
         {
           type: "text",
           text: "You are a friendly English coach. You are given a raw transcript of spoken English (from automatic transcription of an audio recording — it may contain small transcription artifacts). Produce, in ENGLISH:\n\n1) correctedText: a cleaned, corrected, natural-English version of what was said — fix grammar, word choice, verb tenses, and awkward phrasing, while keeping the original meaning and the speaker's voice. Keep it as flowing text/paragraphs. If it reads like a dialogue you may keep line breaks, but do not invent content that isn't in the transcript.\n2) corrections: the most useful specific fixes (aim for the ~8–15 highest-value ones). For each: the original phrase, the corrected version, a type ('grammar' | 'vocabulary' | 'phrasing' | 'tense' | 'other'), and a short plain-language explanation. Skip trivial transcription noise.\n3) summary: 2–3 sentences of encouraging, honest feedback on the speaker's English (fluency, vocabulary, common error patterns).\n4) tips: 2–4 concrete things to practice next.\n\nDo not invent mistakes — only correct what is actually present.",
         },
       ],
-      output_config: { format: { type: "json_schema", schema } },
-      messages: [
-        {
-          role: "user",
-          content: `Here is the transcript to correct and analyze:\n\n${transcript}`,
-        },
-      ],
+      userMessage: `Here is the transcript to correct and analyze:\n\n${transcript}`,
     });
 
-    return Response.json(extractJson(msg));
+    return Response.json(data);
   } catch (err) {
     return errorResponse(err);
   }
