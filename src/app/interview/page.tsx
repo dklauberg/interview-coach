@@ -3,9 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { Recorder, blobToFloat32 } from "@/lib/audio";
+import { Recorder, blobToFloat32, releaseMicrophone } from "@/lib/audio";
 import { transcribe, loadTranscriber } from "@/lib/stt";
-import { speak, stopSpeaking, preloadTTS } from "@/lib/tts";
+import {
+  speak,
+  stopSpeaking,
+  preloadTTS,
+  VOICES,
+  getVoice,
+  setVoice,
+  getSpeed,
+  setSpeed,
+  type VoiceId,
+} from "@/lib/tts";
 import type { Turn } from "@/lib/types";
 
 type Phase =
@@ -26,6 +36,9 @@ export default function InterviewPage() {
   const [modelStatus, setModelStatus] = useState("Loading speech model…");
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState(0);
+  const [speaking, setSpeaking] = useState(false);
+  const [voice, setVoiceState] = useState<VoiceId>("af_heart");
+  const [speed, setSpeedState] = useState(1);
 
   const recorderRef = useRef<Recorder | null>(null);
   const startRef = useRef<number>(0);
@@ -35,8 +48,19 @@ export default function InterviewPage() {
 
   const questionBudget = config ? (config.length === 30 ? 12 : 6) : 6;
 
+  /** Speak a question and keep the UI in sync with whether audio is playing. */
+  const say = useCallback(async (text: string) => {
+    setSpeaking(true);
+    try {
+      await speak(text);
+    } finally {
+      setSpeaking(false);
+    }
+  }, []);
+
   const finishSession = useCallback(() => {
     stopSpeaking();
+    releaseMicrophone();
     router.push("/report");
   }, [router]);
 
@@ -68,7 +92,7 @@ export default function InterviewPage() {
 
         setQuestion(data.question);
         setPhase("ready");
-        speak(data.question);
+        say(data.question);
 
         // If the model wrapped up but we still have a question to show,
         // play it, then end after this final (optional) answer.
@@ -81,7 +105,7 @@ export default function InterviewPage() {
         setPhase("ready");
       }
     },
-    [config, questionBudget, finishSession],
+    [config, questionBudget, finishSession, say],
   );
 
   // init
@@ -95,6 +119,9 @@ export default function InterviewPage() {
 
     turnsRef.current = [];
     startRef.current = Date.now();
+
+    setVoiceState(getVoice());
+    setSpeedState(getSpeed());
 
     // warm the TTS voices list
     if (typeof window !== "undefined") window.speechSynthesis?.getVoices();
@@ -120,6 +147,14 @@ export default function InterviewPage() {
         );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // release the microphone and silence the voice when leaving the screen
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+      releaseMicrophone();
+    };
   }, []);
 
   // countdown timer
@@ -155,6 +190,11 @@ export default function InterviewPage() {
       recorderRef.current = null;
       const audio = await blobToFloat32(blob);
       const text = await transcribe(audio);
+      if (!text) {
+        setError(
+          "No speech was picked up in that answer. Check the microphone and speak a little closer to it.",
+        );
+      }
 
       const index = turnsRef.current.length;
       const endedAt = Date.now();
@@ -184,6 +224,25 @@ export default function InterviewPage() {
       setPhase("ready");
     }
   }
+
+  // Space toggles record/stop, so the candidate's hands can stay off the mouse.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat) return;
+      const el = document.activeElement;
+      if (el && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)) return;
+      if (phase === "ready") {
+        e.preventDefault();
+        startAnswering();
+      } else if (phase === "recording") {
+        e.preventDefault();
+        finishAnswer();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, question]);
 
   if (!config) return null;
 
@@ -223,22 +282,61 @@ export default function InterviewPage() {
           <div className="question-box">
             {question || "…"}
             {phase === "ready" && (
-              <button
-                className="ghost"
-                style={{ display: "block", marginTop: 12 }}
-                onClick={() => speak(question)}
-              >
-                🔊 Replay question
-              </button>
+              <div className="row" style={{ marginTop: 12, flexWrap: "wrap", gap: 10 }}>
+                <button
+                  className="ghost"
+                  onClick={() => (speaking ? stopSpeaking() : say(question))}
+                >
+                  {speaking ? "⏸ Stop the voice" : "🔊 Replay question"}
+                </button>
+
+                <select
+                  aria-label="Interviewer voice"
+                  value={voice}
+                  onChange={(e) => {
+                    const v = e.target.value as VoiceId;
+                    setVoiceState(v);
+                    setVoice(v);
+                    say(question);
+                  }}
+                >
+                  {VOICES.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Speaking speed"
+                  value={String(speed)}
+                  onChange={(e) => {
+                    const s = Number(e.target.value);
+                    setSpeedState(s);
+                    setSpeed(s);
+                  }}
+                >
+                  <option value="0.8">🐢 Slower</option>
+                  <option value="0.9">Slightly slower</option>
+                  <option value="1">Normal speed</option>
+                  <option value="1.1">Slightly faster</option>
+                  <option value="1.2">🐇 Faster</option>
+                </select>
+              </div>
             )}
           </div>
 
           {error && <p className="error">{error}</p>}
 
           {phase === "ready" && (
-            <button className="record-btn" onClick={startAnswering}>
-              🎤 Start answering
-            </button>
+            <>
+              <button className="record-btn" onClick={startAnswering}>
+                🎤 Start answering
+              </button>
+              <p className="hint">
+                Tip: press the space bar to start and stop recording.
+              </p>
+            </>
           )}
 
           {phase === "recording" && (

@@ -1,4 +1,4 @@
-import { anthropic, MODELS, extractJson, errorResponse } from "@/lib/anthropic";
+import { MODELS, generateJson, errorResponse } from "@/lib/anthropic";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,26 +16,21 @@ export async function POST(req: Request) {
   try {
     const { resumeText, jobDescription } = await req.json();
 
-    const msg = await anthropic.messages.create({
+    const data = await generateJson<{ questions: string[] }>({
       model: MODELS.questions,
-      max_tokens: 800,
-      thinking: { type: "disabled" },
+      maxTokens: 2000,
+      effort: "low",
+      schema,
       system: [
         {
           type: "text",
           text: "You are an expert interview coach preparing a tailored mock interview. Based on the résumé and the target job description, list 3 to 5 short, specific clarifying questions you would want the candidate to answer first, so the interview is well-targeted (e.g. motivation for the role, employment gaps, a specific project, target company, or relocation). Keep each question under 20 words and avoid questions already answered by the résumé.",
         },
       ],
-      output_config: { format: { type: "json_schema", schema } },
-      messages: [
-        {
-          role: "user",
-          content: `RÉSUMÉ:\n${resumeText || "(not provided)"}\n\nJOB DESCRIPTION:\n${jobDescription || "(not provided)"}`,
-        },
-      ],
+      userMessage: `RÉSUMÉ:\n${resumeText || "(not provided)"}\n\nJOB DESCRIPTION:\n${jobDescription || "(not provided)"}`,
     });
 
-    return Response.json(extractJson<{ questions: string[] }>(msg));
+    return Response.json(data);
   } catch (err) {
     return errorResponse(err);
   }

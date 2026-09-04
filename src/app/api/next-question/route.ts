@@ -1,10 +1,4 @@
-import {
-  anthropic,
-  MODELS,
-  buildContext,
-  extractJson,
-  errorResponse,
-} from "@/lib/anthropic";
+import { MODELS, buildContext, generateJson, errorResponse } from "@/lib/anthropic";
 import { INTERVIEWER_GUIDELINES } from "@/lib/prompts";
 import type { NextQuestionResponse, SessionConfig, Turn } from "@/lib/types";
 
@@ -55,10 +49,13 @@ export async function POST(req: Request) {
       `Decide the single best next question now. If the budget or time is essentially used up, ask a natural closing question and set "done": true. Otherwise set "done": false.`,
     ].join("\n");
 
-    const msg = await anthropic.messages.create({
+    // Low effort: the candidate is sitting there waiting for the next question,
+    // so latency beats depth here. The rubric-heavy thinking happens in /report.
+    const data = await generateJson<NextQuestionResponse>({
       model: MODELS.questions,
-      max_tokens: 500,
-      thinking: { type: "disabled" },
+      maxTokens: 2000,
+      effort: "low",
+      schema,
       system: [
         { type: "text", text: INTERVIEWER_GUIDELINES },
         {
@@ -67,11 +64,10 @@ export async function POST(req: Request) {
           cache_control: { type: "ephemeral" },
         },
       ],
-      output_config: { format: { type: "json_schema", schema } },
-      messages: [{ role: "user", content: userMessage }],
+      userMessage,
     });
 
-    return Response.json(extractJson<NextQuestionResponse>(msg));
+    return Response.json(data);
   } catch (err) {
     return errorResponse(err);
   }

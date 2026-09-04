@@ -1,14 +1,8 @@
-import {
-  anthropic,
-  MODELS,
-  buildContext,
-  extractJson,
-  errorResponse,
-} from "@/lib/anthropic";
+import { MODELS, buildContext, generateJson, errorResponse } from "@/lib/anthropic";
 import type { SessionConfig, Turn } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const schema = {
   type: "object",
@@ -39,10 +33,13 @@ export async function POST(req: Request) {
       .map((t) => `Turn index ${t.index}: ${t.question}`)
       .join("\n");
 
-    const msg = await anthropic.messages.create({
+    const data = await generateJson<{
+      answers: { turnIndex: number; answer: string }[];
+    }>({
       model: MODELS.questions,
-      max_tokens: 4000,
-      thinking: { type: "disabled" },
+      maxTokens: 16000,
+      effort: "medium",
+      schema,
       system: [
         {
           type: "text",
@@ -54,18 +51,10 @@ export async function POST(req: Request) {
           cache_control: { type: "ephemeral" },
         },
       ],
-      output_config: { format: { type: "json_schema", schema } },
-      messages: [
-        {
-          role: "user",
-          content: `Write a strong example answer for each of these questions:\n\n${questions}`,
-        },
-      ],
+      userMessage: `Write a strong example answer for each of these questions:\n\n${questions}`,
     });
 
-    return Response.json(
-      extractJson<{ answers: { turnIndex: number; answer: string }[] }>(msg),
-    );
+    return Response.json(data);
   } catch (err) {
     return errorResponse(err);
   }

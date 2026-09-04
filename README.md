@@ -14,11 +14,11 @@ Practice English job interviews **by voice** and get AI feedback. Built for two 
 |---|---|---|
 | App | Next.js (React, App Router) | free, runs on `localhost` |
 | Speech-to-text | **Whisper, local in-browser** (transformers.js) | free — model downloads once, then runs on-device |
-| Text-to-speech | Browser Web Speech API | free |
-| Interview questions | **Claude Sonnet 4.6** | pay-per-use (cheap) |
-| Corrections + scoring | **Claude Opus 4.8** | pay-per-use |
+| Text-to-speech | **Kokoro, local in-browser** (Web Speech as fallback) | free — model downloads once, then runs on-device |
+| Interview questions | **Claude Opus 5** (low effort) | pay-per-use |
+| Corrections + scoring | **Claude Opus 5** (high effort) | pay-per-use |
 
-Prompt caching keeps the résumé + job description cheap to reuse across turns. Audio never leaves your machine; only the **transcribed text** is sent to Claude. Estimated cost: roughly **US$0.10–0.20 per 30-min session** (no subscription — you only pay the Anthropic API per use).
+One model runs the whole app; what changes per route is the **effort** level — low while the interview is live (the candidate is waiting on the next question), high for the final report (where feedback quality is the product). Prompt caching keeps the résumé + job description cheap to reuse across turns. Audio never leaves your machine; only the **transcribed text** is sent to Claude. Estimated cost: roughly **US$0.20–0.40 per 30-min session** (no subscription — you only pay the Anthropic API per use).
 
 ## Setup
 
@@ -48,7 +48,30 @@ Open http://localhost:3000 in **Chrome or Edge** (best Web Speech + WebGPU suppo
 
 The app is fully cross-platform — same `npm install` / `npm run dev` everywhere. Whisper (STT), the Anthropic SDK, résumé parsing, and microphone recording all work identically on Linux/Chromium.
 
-**One Linux caveat — text-to-speech voices.** The interviewer's voice uses the browser's Web Speech API. On Linux, Chromium often ships with **no TTS voices installed**, so the question may appear on screen but not be spoken. Fix it by installing a speech engine:
+### Linux Lite (and other Ubuntu-based lightweight distros)
+
+Linux Lite is built on Ubuntu LTS, so everything works — with two adjustments:
+
+**1. Node from the distro repo is too old.** Linux Lite's `apt` ships Node 12–18 depending on the release; Next.js 15 needs 20+. Install NodeSource instead:
+
+```bash
+node -v   # if this is missing or below v20, run the next two lines
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+**2. Use a Chromium-based browser, not the bundled Firefox.** The voice model runs much faster on WebGPU, which Chrome/Chromium enables by default and Firefox does not. Linux Lite ships without snap, so install the `.deb` directly:
+
+```bash
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
+```
+
+Firefox still works — the app just falls back to running the voice on the CPU, which is slower to start each question.
+
+**On older hardware** (Linux Lite's usual target), expect the first interview to be slow: the two models total about 170 MB to download and both then run on the CPU if there's no usable GPU. Budget ~4 GB of RAM for a comfortable session. If transcription drags, `NEXT_PUBLIC_WHISPER_MODEL=Xenova/whisper-tiny.en` in `.env.local` roughly halves the work at some cost in accuracy.
+
+**One Linux caveat — the fallback voice.** The interviewer normally speaks with Kokoro, which runs inside the browser and needs nothing installed. Only if that model fails to load does the app fall back to the browser's Web Speech API — and on Linux, Chromium often ships with **no TTS voices installed**, so in that fallback the question would appear on screen but not be spoken. Install a speech engine if you want the fallback to work too:
 
 ```bash
 # Debian / Ubuntu
@@ -129,6 +152,17 @@ sudo systemctl enable --now cloudflared
 - First load from a new computer: the browser asks for the password (any username), then downloads the Whisper model once. Use **Chrome/Edge** and allow the microphone.
 
 Cost: **R$0** for hosting (just electricity + the per-use Claude API). The heavy speech recognition runs in each visitor's browser, so your 8 GB PC stays light as a server.
+
+## Voice quality (the bits that make it sound like a person)
+
+- **Neural voice, on-device** — Kokoro synthesizes the interviewer's questions. It runs on WebGPU when available and CPU otherwise; if the model can't load at all, the app falls back to the OS voice so it never goes silent.
+- **Sentence streaming** — the first sentence starts playing while the rest is still being generated, so questions begin in about a second instead of after the whole paragraph. Sentences are scheduled on one Web Audio timeline, so playback is gapless.
+- **Voice and speed picker** — choose from seven Kokoro voices (US/UK, male/female) and five speeds right on the interview screen; the choice is remembered.
+- **Speech-aware text cleanup** — markdown, emoji and written abbreviations (`e.g.`, `etc.`, `%`) are rewritten the way a person would read them before synthesis.
+- **Better recognition of your voice** — the mic is captured with echo cancellation, noise suppression and auto gain; recordings are downmixed to mono, silence-trimmed against the recording's own noise floor, and peak-normalized before Whisper sees them. Whisper decodes greedily with an n-gram repeat block, and its stock "thanks for watching"-type hallucinations on empty audio are filtered out.
+- **Space bar** starts and stops recording; the mic is acquired once per session instead of on every answer.
+
+Want higher accuracy for strong accents and don't mind it being ~3x slower? Set `NEXT_PUBLIC_WHISPER_MODEL=Xenova/whisper-small.en` in `.env.local`.
 
 ## Also included
 
