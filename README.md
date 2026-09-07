@@ -50,7 +50,16 @@ The app is fully cross-platform — same `npm install` / `npm run dev` everywher
 
 ### Linux Lite (and other Ubuntu-based lightweight distros)
 
-Linux Lite is built on Ubuntu LTS, so everything works — with two adjustments:
+**The short way** — one command does everything below (system packages, Node 20, Chrome, clone, `npm install`, `.env.local`, build, and optionally the boot service). It's safe to re-run, and it never overwrites an existing `.env.local`:
+
+```bash
+git clone https://github.com/dklauberg/interview-coach ~/Interview
+bash ~/Interview/deploy/install-linux.sh
+```
+
+Re-run the same script after a `git pull` to rebuild and restart the service.
+
+**The manual way** — Linux Lite is built on Ubuntu LTS, so everything works, with two adjustments:
 
 **1. Node from the distro repo is too old.** Linux Lite's `apt` ships Node 12–18 depending on the release; Next.js 15 needs 20+. Install NodeSource instead:
 
