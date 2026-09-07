@@ -110,7 +110,9 @@ else
   cp .env.local.example .env.local
   echo "Criado a partir do exemplo."
   echo "Pegue uma chave em: https://console.anthropic.com/settings/keys"
-  read -rp "Cole a sua ANTHROPIC_API_KEY (ou Enter para preencher depois): " key
+  # -s: a chave não é ecoada, para não ficar visível na tela nem no scrollback.
+  read -rsp "Cole a sua ANTHROPIC_API_KEY (não aparece na tela; Enter para pular): " key
+  echo
   if [[ -n ${key:-} ]]; then
     # escapa & e / para o sed não interpretar
     esc=${key//\\/\\\\}; esc=${esc//&/\\&}; esc=${esc//\//\\/}
